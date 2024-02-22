@@ -49,9 +49,7 @@ public class Process {
             System.out.println("Establishing connections...");
             // If user confirms, proceed with delayed connection attempts
             for (int i = 0; i < ips.length; i++) {
-                if (i != processID - 1) { // Adjusted condition to match corrected logic
-                    tryAddUniqueWire(ips[i], ports[i]);
-                }
+                tryAddUniqueWire(ips[i], ports[i]);
             }
         } else {
             System.out.println("User did not confirm. Exiting...");
@@ -62,6 +60,7 @@ public class Process {
 
 
     private void tryAddUniqueWire(String ip, int port) {
+        System.out.println("Creating Wire for IP: " + ip);
         Wire newWire = new Wire(ip, port); // Assume Wire can be constructed with IP and port directly
         System.out.println("Wire Created...");
         // Synchronize access to the wires array to ensure thread safety
@@ -117,9 +116,10 @@ public class Process {
             try {
                 // Assuming the server IP is not needed as it will bind to the local machine IP
                 this.serverSocket = new ServerSocket(serverPort); // Bind to port 5050
-                System.out.println("Server started. Listening on port 5050.");
+                System.out.println("Server started. Listening on port: " + serverPort);
                 while (!Thread.currentThread().isInterrupted()) {
                     Socket clientSocket = serverSocket.accept();
+                    System.out.println("Client Socket accepted !");
                     // Handle the client socket
                     handleClientSocket(clientSocket);
                 }
