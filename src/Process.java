@@ -1,10 +1,7 @@
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.io.Serializable;
-import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.concurrent.*;
 
@@ -62,18 +59,19 @@ public class Process {
     private void tryAddUniqueWire(String ip, int port) {
         System.out.println("Creating Wire for IP: " + ip);
         Wire newWire = new Wire(ip, port); // Assume Wire can be constructed with IP and port directly
-        System.out.println("Wire Created...");
         // Synchronize access to the wires array to ensure thread safety
         System.out.println("Checkin if the Wire existed before...");
         boolean exists = false;
         for (Wire wire : wires) {
             if (wire != null && wire.isEquivalentTo(newWire)) {
                 exists = true;
+                System.out.println("Wire did exist...");
                 break;
             }
         }
         if (!exists) {
             // Add newWire to the first null position in the wires array
+            System.out.println("Wire did not exist and Created...");
             for (int i = 0; i < wires.length; i++) {
                 if (wires[i] == null) {
                     wires[i] = newWire;
@@ -83,44 +81,51 @@ public class Process {
         }
     }
 
-    private Wire tryAddUniqueWire(Socket socket) {
-        Wire newWire = new Wire(socket); // Assume Wire can be constructed with a Socket directly
 
-        // Synchronize access to the wires array to ensure thread safety
-        synchronized (this) {
-            boolean exists = false;
-            for (Wire wire : wires) {
-                if (wire != null && wire.isEquivalentTo(newWire)) {
-                    exists = true;
-                    break;
+    private void handleClientSocket(Socket clientSocket) throws IOException {
+        // First, initialize the ObjectOutputStream
+        ObjectOutputStream objectOutputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+        // Flush the stream to ensure the header is sent to the client
+        objectOutputStream.flush();
+
+        // Now, initialize the ObjectInputStream
+        ObjectInputStream objectInputStream = new ObjectInputStream(clientSocket.getInputStream());
+
+        while (!clientSocket.isClosed()) {
+            Message receivedMessage = null;
+            try {
+                receivedMessage = (Message) objectInputStream.readObject();
+                if (receivedMessage != null) {
+                    handleReceivedMessage(receivedMessage);
                 }
-            }
-            if (!exists) {
-                // Add newWire to the first null position in the wires array
-                for (int i = 0; i < wires.length; i++) {
-                    if (wires[i] == null) {
-                        wires[i] = newWire;
-                        return newWire; // Return the added Wire object
-                    }
-                }
+            } catch (EOFException e) {
+                // End of stream reached, close the connection
+                break;
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace(); // Handle exceptions appropriately, but continue listening
             }
         }
-        return null; // Return null if the wire was not added due to duplication
     }
 
-    
+
     // Initialize and start the server
     private void startServer() {
         serverExecutor.submit(() -> {
             try {
-                // Assuming the server IP is not needed as it will bind to the local machine IP
-                this.serverSocket = new ServerSocket(serverPort); // Bind to port 5050
+                this.serverSocket = new ServerSocket(serverPort); // Bind to port
                 System.out.println("Server started. Listening on port: " + serverPort);
                 while (!Thread.currentThread().isInterrupted()) {
                     Socket clientSocket = serverSocket.accept();
                     System.out.println("Client Socket accepted !");
-                    // Handle the client socket
-                    handleClientSocket(clientSocket);
+                    // Handle each client connection in a new thread
+                    new Thread(() -> {
+                        try {
+                            handleClientSocket(clientSocket);
+                        } catch (IOException e) {
+                            System.out.println("Error handling client socket.");
+                            e.printStackTrace();
+                        }
+                    }).start();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -128,25 +133,6 @@ public class Process {
         });
     }
 
-    private void handleClientSocket(Socket clientSocket) {
-        serverExecutor.submit(() -> {
-            try {
-                // Utilize the Wire class for handling the client socket
-                Wire clientWire = tryAddUniqueWire(clientSocket);
-                // Listen and process messages using the Wire's functionality
-                clientWire.receiveMessage(this::handleReceivedMessage);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    clientSocket.close(); // Close the client socket after use
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-    }
 
 
     // Broadcast a message with the current vector clock

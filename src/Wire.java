@@ -47,14 +47,22 @@ public class Wire {
     // Method to receive a message with a callback
     public void receiveMessage(Consumer<Object> messageHandler) {
         executor.submit(() -> {
-            try {
-                Object message = in.readObject();
-                messageHandler.accept(message);
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
+            while (!socket.isClosed()) {
+                try {
+                    Object message = in.readObject();
+                    messageHandler.accept(message);
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                    try {
+                        socket.close(); // Close the socket on error to break the loop
+                    } catch (IOException ioException) {
+                        ioException.printStackTrace();
+                    }
+                }
             }
         });
     }
+
 
     public boolean isEquivalentTo(Wire otherWire) {
         // Check if both sockets are connected

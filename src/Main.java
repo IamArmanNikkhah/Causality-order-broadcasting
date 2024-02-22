@@ -51,6 +51,8 @@ public class Main {
 
             // Send messages
             while (messageCount < totalMessages) {
+
+                System.out.println("Sending Massage number: " + messageCount);
                 process.broadcastMessage("Message " + (messageCount + 1) + " from Process " + processID);
                 messageCount++;
 
