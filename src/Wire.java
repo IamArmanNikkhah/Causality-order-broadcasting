@@ -21,6 +21,18 @@ public class Wire {
         }
     }
 
+    public Wire(Socket socket) {
+        try {
+            this.socket = socket;
+            this.out = new ObjectOutputStream(socket.getOutputStream());
+            this.in = new ObjectInputStream(socket.getInputStream());
+            this.executor = Executors.newSingleThreadExecutor();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     // Method to send a message
     public void sendMessage(Object message) {
         try {
@@ -41,4 +53,18 @@ public class Wire {
             }
         });
     }
+
+    public boolean isEquivalentTo(Wire otherWire) {
+        // Check if both sockets are connected
+        if (this.socket == null || otherWire.socket == null) {
+            return false;
+        }
+
+        // Compare remote IP addresses and ports
+        boolean isSameRemoteIP = this.socket.getInetAddress().equals(otherWire.socket.getInetAddress());
+        boolean isSameRemotePort = this.socket.getPort() == otherWire.socket.getPort();
+
+        return isSameRemoteIP && isSameRemotePort;
+    }
+
 }

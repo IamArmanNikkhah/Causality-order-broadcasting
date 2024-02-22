@@ -1,6 +1,13 @@
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.io.Serializable;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.util.concurrent.*;
+
 
 public class Process {
     private final int processID;
@@ -9,22 +16,68 @@ public class Process {
     private Random randomTimeGenerator = new Random();
     private final ConcurrentLinkedQueue<Message> messageBuffer; // Thread-safe message buffer
 
+    // Server variables
+    private ServerSocket serverSocket;
+    private ExecutorService serverExecutor;
+
     public Process(int id, String[] ips, int[] ports) {
         this.processID = id;
         // Check if ips and ports arrays have the same length
         if (ips.length != ports.length) {
             throw new IllegalArgumentException("The lengths of IPs and ports arrays must be the same.");
         }
-        int totalProcesses = ips.length + 1; // Including this process
-        this.vectorClock = new int[totalProcesses]; // Initialize vector clock with zeros for all processes
-        this.wires = new Wire[totalProcesses - 1]; // Wires for connections to other processes, excluding self
-        this.messageBuffer = new ConcurrentLinkedQueue<>(); // Initialize the message buffer
+        int totalProcesses  = ips.length + 1; // Including this process
+        this.vectorClock    = new int[totalProcesses]; // Initialize vector clock with zeros for all processes
+        this.wires          = new Wire[totalProcesses - 1]; // Wires for connections to other processes, excluding self
+
+        this.serverExecutor = Executors.newSingleThreadExecutor();
+        startServer();
+
+        this.messageBuffer  = new ConcurrentLinkedQueue<>(); // Initialize the message buffer
 
         for (int i = 0, j = 0; i < totalProcesses - 1; i++) {
             if (i != processID - 1) { // Exclude self connection
                 wires[j++] = new Wire(ips[i], ports[i]);
             }
         }
+    }
+
+    // Initialize and start the server
+    private void startServer() {
+        serverExecutor.submit(() -> {
+            try {
+                // Assuming the server IP is not needed as it will bind to the local machine IP
+                this.serverSocket = new ServerSocket(5050); // Bind to port 5050
+                System.out.println("Server started. Listening on port 5050.");
+                while (!Thread.currentThread().isInterrupted()) {
+                    Socket clientSocket = serverSocket.accept();
+                    // Handle the client socket
+                    handleClientSocket(clientSocket);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void handleClientSocket(Socket clientSocket) {
+        serverExecutor.submit(() -> {
+            try {
+                // Utilize the Wire class for handling the client socket
+                Wire clientWire = new Wire(clientSocket);
+                // Listen and process messages using the Wire's functionality
+                clientWire.receiveMessage(this::handleReceivedMessage);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    clientSocket.close(); // Close the client socket after use
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
 
