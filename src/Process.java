@@ -75,7 +75,7 @@ public class Process {
         for (int i = 0; i < vectorClock.length; i++) {
             vectorClock[i] = Math.max(vectorClock[i], message.getVectorClock()[i]);
         }
-        System.out.println(STR."Message delivered to Process \{processID}: \{message.getContent()}");
+        System.out.println("Message delivered to Process " + processID + ": " + message.getContent());
 
     }
 
