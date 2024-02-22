@@ -17,6 +17,7 @@ public class Wire {
             this.out = new ObjectOutputStream(socket.getOutputStream());
             this.in = new ObjectInputStream(socket.getInputStream());
             this.executor = Executors.newSingleThreadExecutor();
+            System.out.println("I am exiting the Wire class ....");
         } catch (IOException e) {
             e.printStackTrace();
         }
