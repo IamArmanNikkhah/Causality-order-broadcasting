@@ -64,21 +64,20 @@ public class Process {
         Wire newWire = new Wire(ip, port); // Assume Wire can be constructed with IP and port directly
         System.out.println("Wire Created...");
         // Synchronize access to the wires array to ensure thread safety
-        synchronized (this) {
-            boolean exists = false;
-            for (Wire wire : wires) {
-                if (wire != null && wire.isEquivalentTo(newWire)) {
-                    exists = true;
-                    break;
-                }
+        System.out.println("Checkin if the Wire existed before...");
+        boolean exists = false;
+        for (Wire wire : wires) {
+            if (wire != null && wire.isEquivalentTo(newWire)) {
+                exists = true;
+                break;
             }
-            if (!exists) {
-                // Add newWire to the first null position in the wires array
-                for (int i = 0; i < wires.length; i++) {
-                    if (wires[i] == null) {
-                        wires[i] = newWire;
-                        break;
-                    }
+        }
+        if (!exists) {
+            // Add newWire to the first null position in the wires array
+            for (int i = 0; i < wires.length; i++) {
+                if (wires[i] == null) {
+                    wires[i] = newWire;
+                    break;
                 }
             }
         }
