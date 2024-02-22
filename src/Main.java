@@ -9,12 +9,13 @@ public class Main {
     public static void main(String[] args) {
         // Example arguments: Process ID, IPs, and Ports for other processes
         if (args.length < 2) {
-            System.out.println("Usage: Process <ProcessID> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
+            System.out.println("Usage: Process <ProcessID> <ServerPort> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
             return;
         }
 
         int processID = Integer.parseInt(args[0]);
-        String[] ipsAndPorts = Arrays.copyOfRange(args, 1, args.length);
+        int serverPort = Integer.parseInt(args[1]);
+        String[] ipsAndPorts = Arrays.copyOfRange(args, 2, args.length);
         String[] ips = new String[ipsAndPorts.length];
         int[] ports = new int[ipsAndPorts.length];
 
@@ -24,7 +25,7 @@ public class Main {
             ports[i] = Integer.parseInt(ipAndPort[1]);
         }
 
-        Process process = new Process(processID, ips, ports);
+        Process process = new Process(processID,serverPort, ips, ports);
 
         System.out.println("Connections via wires have been successfully established for Process " + processID + ".");
 

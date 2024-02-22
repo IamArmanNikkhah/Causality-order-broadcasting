@@ -19,8 +19,9 @@ public class Process {
     // Server variables
     private ServerSocket serverSocket;
     private ExecutorService serverExecutor;
+    private int serverPort;
 
-    public Process(int id, String[] ips, int[] ports) {
+    public Process(int id, int port, String[] ips, int[] ports) {
         this.processID = id;
         // Check if ips and ports arrays have the same length
         if (ips.length != ports.length) {
@@ -31,23 +32,91 @@ public class Process {
         this.wires          = new Wire[totalProcesses - 1]; // Wires for connections to other processes, excluding self
 
         this.serverExecutor = Executors.newSingleThreadExecutor();
+        this.serverPort     = port;
         startServer();
 
         this.messageBuffer  = new ConcurrentLinkedQueue<>(); // Initialize the message buffer
 
-        for (int i = 0, j = 0; i < totalProcesses - 1; i++) {
-            if (i != processID - 1) { // Exclude self connection
-                wires[j++] = new Wire(ips[i], ports[i]);
+        confirmAndEstablishConnections(ips, ports);
+    }
+
+    private void confirmAndEstablishConnections(String[] ips, int[] ports) {
+        Scanner scanner = new Scanner(System.in); // Create a Scanner object
+        System.out.println("Do you want to start establishing connections? (yes/no)");
+        String userResponse = scanner.nextLine(); // Read user response
+
+        if ("yes".equalsIgnoreCase(userResponse.trim())) {
+            System.out.println("Establishing connections...");
+            // If user confirms, proceed with delayed connection attempts
+            for (int i = 0; i < ips.length; i++) {
+                if (i != processID - 1) { // Adjusted condition to match corrected logic
+                    tryAddUniqueWire(ips[i], ports[i]);
+                }
+            }
+        } else {
+            System.out.println("User did not confirm. Exiting...");
+            // Optionally, implement logic to handle this case, such as shutting down the server or retrying the confirmation.
+            // This might involve closing resources or simply logging the event, based on application requirements.
+        }
+    }
+
+
+    private void tryAddUniqueWire(String ip, int port) {
+        Wire newWire = new Wire(ip, port); // Assume Wire can be constructed with IP and port directly
+        System.out.println("Wire Created...");
+        // Synchronize access to the wires array to ensure thread safety
+        synchronized (this) {
+            boolean exists = false;
+            for (Wire wire : wires) {
+                if (wire != null && wire.isEquivalentTo(newWire)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                // Add newWire to the first null position in the wires array
+                for (int i = 0; i < wires.length; i++) {
+                    if (wires[i] == null) {
+                        wires[i] = newWire;
+                        break;
+                    }
+                }
             }
         }
     }
 
+    private Wire tryAddUniqueWire(Socket socket) {
+        Wire newWire = new Wire(socket); // Assume Wire can be constructed with a Socket directly
+
+        // Synchronize access to the wires array to ensure thread safety
+        synchronized (this) {
+            boolean exists = false;
+            for (Wire wire : wires) {
+                if (wire != null && wire.isEquivalentTo(newWire)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                // Add newWire to the first null position in the wires array
+                for (int i = 0; i < wires.length; i++) {
+                    if (wires[i] == null) {
+                        wires[i] = newWire;
+                        return newWire; // Return the added Wire object
+                    }
+                }
+            }
+        }
+        return null; // Return null if the wire was not added due to duplication
+    }
+
+    
     // Initialize and start the server
     private void startServer() {
         serverExecutor.submit(() -> {
             try {
                 // Assuming the server IP is not needed as it will bind to the local machine IP
-                this.serverSocket = new ServerSocket(5050); // Bind to port 5050
+                this.serverSocket = new ServerSocket(serverPort); // Bind to port 5050
                 System.out.println("Server started. Listening on port 5050.");
                 while (!Thread.currentThread().isInterrupted()) {
                     Socket clientSocket = serverSocket.accept();
@@ -64,7 +133,7 @@ public class Process {
         serverExecutor.submit(() -> {
             try {
                 // Utilize the Wire class for handling the client socket
-                Wire clientWire = new Wire(clientSocket);
+                Wire clientWire = tryAddUniqueWire(clientSocket);
                 // Listen and process messages using the Wire's functionality
                 clientWire.receiveMessage(this::handleReceivedMessage);
 
