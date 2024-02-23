@@ -15,24 +15,27 @@ public class Main {
     Process process;
     int noOtherProcesses;
 
+
+    public Main(int processID, int serverPort, String[] ips, int[] ports) {
+        this.processID = processID;
+
+        this.noOtherProcesses = ips.length;
+
+        this.process = new Process(processID, serverPort, ips, ports);
+
+        System.out.println("Connections via wires have been successfully established for Process " + this.processID + ".");
+    }
+
     public static void main(String[] args) {
         // Step 2: Create an instance of the Main class
-        Main instance = new Main();
-
-        // Step 3: Call the non-static main method on the instance
-        instance.launch(args); // Note: This calls the non-static main method
-    }
-    public void launch(String[] args) {
-        // Example arguments: Process ID, IPs, and Ports for other processes
         if (args.length < 2) {
             System.out.println("Usage: Process <ProcessID> <ServerPort> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
             return;
         }
 
-        this.processID = Integer.parseInt(args[0]);
+        int processID = Integer.parseInt(args[0]);
         int serverPort = Integer.parseInt(args[1]);
         String[] ipsAndPorts = Arrays.copyOfRange(args, 2, args.length);
-        this.noOtherProcesses = ipsAndPorts.length;
         String[] ips = new String[ipsAndPorts.length];
         int[] ports = new int[ipsAndPorts.length];
 
@@ -42,9 +45,13 @@ public class Main {
             ports[i] = Integer.parseInt(ipAndPort[1]);
         }
 
-        this.process = new Process(processID,serverPort, ips, ports);
+        Main instance = new Main(processID, serverPort, ips, ports);
 
-        System.out.println("Connections via wires have been successfully established for Process " + processID + ".");
+        // Step 3: Call the non-static main method on the instance
+        instance.launch(); // Note: This calls the non-static main method
+    }
+
+    public void launch() {
 
         waitForTrigger(1234);
 
