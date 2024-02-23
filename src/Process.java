@@ -94,6 +94,7 @@ public class Process {
         while (!clientSocket.isClosed()) {
             Message receivedMessage = null;
             try {
+                //randomWait();
                 receivedMessage = (Message) objectInputStream.readObject();
                 if (receivedMessage != null) {
                     handleReceivedMessage(receivedMessage);
