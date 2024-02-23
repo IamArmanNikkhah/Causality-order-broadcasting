@@ -26,31 +26,6 @@ public class Main {
         System.out.println("Connections via wires have been successfully established for Process " + this.processID + ".");
     }
 
-    public static void main(String[] args) {
-        // Step 2: Create an instance of the Main class
-        if (args.length < 2) {
-            System.out.println("Usage: Process <ProcessID> <ServerPort> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
-            return;
-        }
-
-        int processID = Integer.parseInt(args[0]);
-        int serverPort = Integer.parseInt(args[1]);
-        String[] ipsAndPorts = Arrays.copyOfRange(args, 2, args.length);
-        String[] ips = new String[ipsAndPorts.length];
-        int[] ports = new int[ipsAndPorts.length];
-
-        for (int i = 0; i < ipsAndPorts.length; i++) {
-            String[] ipAndPort = ipsAndPorts[i].split(":");
-            ips[i] = ipAndPort[0];
-            ports[i] = Integer.parseInt(ipAndPort[1]);
-        }
-
-        Main instance = new Main(processID, serverPort, ips, ports);
-
-        // Step 3: Call the non-static main method on the instance
-        instance.launch(); // Note: This calls the non-static main method
-    }
-
     public void launch() {
 
         waitForTrigger(1234);
@@ -126,6 +101,30 @@ public class Main {
         }
     }
 
+    public static void main(String[] args) {
+        // Step 2: Create an instance of the Main class
+        if (args.length < 2) {
+            System.out.println("Usage: Process <ProcessID> <ServerPort> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
+            return;
+        }
+
+        int processID = Integer.parseInt(args[0]);
+        int serverPort = Integer.parseInt(args[1]);
+        String[] ipsAndPorts = Arrays.copyOfRange(args, 2, args.length);
+        String[] ips = new String[ipsAndPorts.length];
+        int[] ports = new int[ipsAndPorts.length];
+
+        for (int i = 0; i < ipsAndPorts.length; i++) {
+            String[] ipAndPort = ipsAndPorts[i].split(":");
+            ips[i] = ipAndPort[0];
+            ports[i] = Integer.parseInt(ipAndPort[1]);
+        }
+
+        Main instance = new Main(processID, serverPort, ips, ports);
+
+        // Step 3: Call the non-static main method on the instance
+        instance.launch(); // Note: This calls the non-static main method
+    }
 
 
 }
