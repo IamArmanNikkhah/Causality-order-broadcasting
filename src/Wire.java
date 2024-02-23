@@ -13,11 +13,9 @@ public class Wire {
     public Wire(String ip, int port) {
         try {
             this.socket = new Socket(ip, port);
-            System.out.println("Socket has been Created ... ");
             this.out = new ObjectOutputStream(socket.getOutputStream());
             this.in = new ObjectInputStream(socket.getInputStream());
             this.executor = Executors.newSingleThreadExecutor();
-            System.out.println("I am exiting the Wire class ....");
         } catch (IOException e) {
             e.printStackTrace();
         }

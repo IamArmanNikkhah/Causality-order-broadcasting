@@ -60,7 +60,7 @@ public class Process {
         System.out.println("Creating Wire for IP: " + ip);
         Wire newWire = new Wire(ip, port); // Assume Wire can be constructed with IP and port directly
         // Synchronize access to the wires array to ensure thread safety
-        System.out.println("Checkin if the Wire existed before...");
+
         boolean exists = false;
         for (Wire wire : wires) {
             if (wire != null && wire.isEquivalentTo(newWire)) {
