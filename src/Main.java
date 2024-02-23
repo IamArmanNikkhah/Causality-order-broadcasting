@@ -14,7 +14,15 @@ public class Main {
     int processID;
     Process process;
     int noOtherProcesses;
-    public void main(String[] args) {
+
+    public static void main(String[] args) {
+        // Step 2: Create an instance of the Main class
+        Main instance = new Main();
+
+        // Step 3: Call the non-static main method on the instance
+        instance.launch(args); // Note: This calls the non-static main method
+    }
+    public void launch(String[] args) {
         // Example arguments: Process ID, IPs, and Ports for other processes
         if (args.length < 2) {
             System.out.println("Usage: Process <ProcessID> <ServerPort> <IP1:Port1> <IP2:Port2> <IP3:Port3>");
