@@ -159,6 +159,7 @@ public class Process {
             vectorClock[processID - 1]++; // Increment own position in vector clock
             Message broadcastMessage = new Message(processID, message, vectorClock.clone(), currentRound);
             hasMessageSentInCurrentRound = true;
+            receivedMessages.add(broadcastMessage);
     
             for (Wire wire : wires) {
                 wire.sendMessage(broadcastMessage);
