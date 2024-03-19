@@ -9,6 +9,13 @@ public class Process {
     private final int processID;
     private Wire[] wires; // Connections to other processes
     private int[] vectorClock; // Vector clock for this process
+    
+    private int currentRound; // Round Number for this process
+    private int totalProcesses;
+    private String fileName;
+    private boolean hasMessageSentInCurrentRound;
+    private PriorityQueue<Message> messagesToBroadcast;
+    
     private Random randomTimeGenerator = new Random();
     private final ConcurrentLinkedQueue<Message> messageBuffer; // Thread-safe message buffer
 
@@ -26,9 +33,14 @@ public class Process {
         if (ips.length != ports.length) {
             throw new IllegalArgumentException("The lengths of IPs and ports arrays must be the same.");
         }
-        int totalProcesses  = ips.length + 1; // Including this process
+        this.totalProcesses  = ips.length + 1; // Including this process
         this.vectorClock    = new int[totalProcesses]; // Initialize vector clock with zeros for all processes
         this.wires          = new Wire[totalProcesses - 1]; // Wires for connections to other processes, excluding self
+        
+        this.currentRound   = 0;
+        this.fileName       = "process_" + id + ".txt";
+        this.hasMessageSentInCurrentRound = false;
+        this.messagesToBroadcast = new PriorityQueue<>(Comparator.comparingInt(Message::getRound));
 
         this.serverExecutor = Executors.newSingleThreadExecutor();
         this.serverPort     = port;
@@ -142,13 +154,19 @@ public class Process {
 
     // Broadcast a message with the current vector clock
     public void broadcastMessage(String message) {
-
-        randomWait();
-        vectorClock[processID - 1]++; // Increment own position in vector clock
-        Message broadcastMessage = new Message(processID, message, vectorClock.clone());
-
-        for (Wire wire : wires) {
-            wire.sendMessage(broadcastMessage);
+        if (!hasMessageSentInCurrentRound) {
+            randomWait();
+            vectorClock[processID - 1]++; // Increment own position in vector clock
+            Message broadcastMessage = new Message(processID, message, vectorClock.clone(), currentRound);
+            hasMessageSentInCurrentRound = true;
+    
+            for (Wire wire : wires) {
+                wire.sendMessage(broadcastMessage);
+            }
+        } else {
+            // Add the message to the priority queue for the next round
+            Message queuedMessage = new Message(processID, message, vectorClock.clone(), currentRound + 1);
+            messagesToBroadcast.offer(queuedMessage);
         }
     }
 
@@ -183,16 +201,72 @@ public class Process {
 
     // Deliver the message and update the process's vector clock
     private void deliverMessage(Message message) {
-        // Update vector clock to the pointwise maximum
-        for (int i = 0; i < vectorClock.length; i++) {
-            vectorClock[i] = Math.max(vectorClock[i], message.getVectorClock()[i]);
-        }
         // Add the message to the list of delivered messages
-        deliveredMessages.add(message);
-        
-        //System.out.println("Message delivered to Process " + processID + ": " + message.getContent());
+        receivedMessages.add(message);
+    
+        if (receivedMessages.size() == totalProcesses) {
+            Set<Message> deliverable = new HashSet<>();
+    
+            // Iterate through the received messages that have not been delivered
+            Iterator<Message> iterator = receivedMessages.iterator();
+            while (iterator.hasNext()) {
+                Message m = iterator.next();
+                if (!deliveredMessages.contains(m)) {
+                    deliverable.add(m);
+                    iterator.remove(); // Remove the message from receivedMessages
+                }
+            }
+    
+            // Deliver all messages in deliverable, in increasing order of (ts(m), sender(m))
+            deliverMessagesInOrder(deliverable);
+    
+            // Add the delivered messages to the deliveredMessages set
+            deliveredMessages.addAll(deliverable);
+    
+            // Increment the round variable
+            System.out.println("Round " + currentRound + ": finished !\n");
+            currentRound++;
+
+            // Reset the flag for the new round
+            hasMessageSentInCurrentRound = false;
+
+            // Broadcast queued messages for the new round
+            while (!messagesToBroadcast.isEmpty() && messagesToBroadcast.peek().getRound() == currentRound) {
+                Message queuedMessage = messagesToBroadcast.poll();
+                broadcastMessage(queuedMessage.getContent());
+            }
+
+            
+        }
     }
 
+    private void deliverMessagesInOrder(Set<Process.Message> deliverable) {
+        // Convert the set to a list for sorting
+        List<Process.Message> messageList = new ArrayList<>(deliverable);
+
+        // Sort the messages based on the ProcessID (low to high)
+        messageList.sort(Comparator.comparingInt(Process.Message::getSenderId));
+
+        // Create a StringBuilder to store the message contents
+        StringBuilder sb = new StringBuilder();
+
+        // Iterate through the sorted messages
+        for (Process.Message message : messageList) {
+            // Append the message content to the StringBuilder
+            sb.append(message.getContent()).append("\n");
+        }
+
+        // Write the message contents to the process's text file
+        try {
+            FileWriter writer = new FileWriter(fileName, true); // Open the file in append mode
+            writer.write(sb.toString());
+            writer.close();
+        } catch (IOException e) {
+            System.out.println("Error writing to file: " + e.getMessage());
+        }
+    }
+
+    
     private void UpdateClock(Message message) {
         // Update vector clock to the pointwise maximum
         for (int i = 0; i < vectorClock.length; i++) {
@@ -222,30 +296,12 @@ public class Process {
 
                 UpdateClock(typedMessage);
 
-                receivedMessages.add(typedMessage);
-
-                Set<Message> deliverable = new HashSet<>();
-
                 if (isDeliverable(typedMessage)) {
                     deliverMessage(typedMessage);
                     checkAndDeliverBufferedMessages();
                 } else {
                     messageBuffer.add(typedMessage);
                 }
-
-                // Step 5: Iterate through the received messages that have not been delivered
-                for (Message m : receivedMessages) {
-                    if (!deliveredMessages.contains(m)) {
-                        if (isDeliverable(m)) {
-                           deliverable.add(m);
-                        }
-
-                    } else {
-                        messageBuffer.add(typedMessage);
-                    }
-                }
-
-
 
             } else {
                 System.out.println("Received object is not of type Message");
@@ -269,23 +325,29 @@ public class Process {
         private final int senderId;
         private final String content;
         private final int[] vectorClock;
-
-        public Message(int senderId, String content, int[] vectorClock) {
+        private final int round;
+    
+        public Message(int senderId, String content, int[] vectorClock, int round) {
             this.senderId = senderId;
             this.content = content;
             this.vectorClock = vectorClock;
+            this.round = round;
         }
-
+    
         public int getSenderId() {
             return senderId;
         }
-
+    
         public String getContent() {
             return content;
         }
-
+    
         public int[] getVectorClock() {
             return vectorClock;
+        }
+    
+        public int getRound() {
+            return round;
         }
     }
 }
