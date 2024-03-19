@@ -13,6 +13,9 @@ public class Process {
     private Random randomTimeGenerator = new Random();
     private final ConcurrentLinkedQueue<Message> messageBuffer; // Thread-safe message buffer
 
+    private final Set<Message> receivedMessages; // Set to store received messages
+    private final Set<Message> deliveredMessages; // Set to store delivered messages
+
     // Server variables
     private ServerSocket serverSocket;
     private ExecutorService serverExecutor;
@@ -32,7 +35,9 @@ public class Process {
         this.serverPort     = port;
         startServer();
 
-        this.messageBuffer  = new ConcurrentLinkedQueue<>(); // Initialize the message buffer
+        this.messageBuffer     = new ConcurrentLinkedQueue<>(); // Initialize the message buffer
+        this.receivedMessages  = new HashSet<>(); // Initialize the receivedMessages set
+        this.deliveredMessages = new HashSet<>(); // Initialize the deliveredMessages set
 
         confirmAndEstablishConnections(ips, ports);
     }
@@ -183,8 +188,17 @@ public class Process {
         for (int i = 0; i < vectorClock.length; i++) {
             vectorClock[i] = Math.max(vectorClock[i], message.getVectorClock()[i]);
         }
-        System.out.println("Message delivered to Process " + processID + ": " + message.getContent());
+        // Add the message to the list of delivered messages
+        deliveredMessages.add(message);
+        
+        //System.out.println("Message delivered to Process " + processID + ": " + message.getContent());
+    }
 
+    private void UpdateClock(Message message) {
+        // Update vector clock to the pointwise maximum
+        for (int i = 0; i < vectorClock.length; i++) {
+            vectorClock[i] = Math.max(vectorClock[i], message.getVectorClock()[i]);
+        }
     }
 
 
@@ -204,13 +218,36 @@ public class Process {
     private void handleReceivedMessage(Object message) {
         synchronized (this) {
             if (message instanceof Message) {
+                
                 Message typedMessage = (Message) message;
+
+                UpdateClock(typedMessage);
+
+                receivedMessages.add(typedMessage);
+
+                Set<Message> deliverable = new HashSet<>();
+
                 if (isDeliverable(typedMessage)) {
                     deliverMessage(typedMessage);
                     checkAndDeliverBufferedMessages();
                 } else {
                     messageBuffer.add(typedMessage);
                 }
+
+                // Step 5: Iterate through the received messages that have not been delivered
+                for (Message m : receivedMessages) {
+                    if (!deliveredMessages.contains(m)) {
+                        if (isDeliverable(m)) {
+                           deliverable.add(m);
+                        }
+
+                    } else {
+                        messageBuffer.add(typedMessage);
+                    }
+                }
+
+
+
             } else {
                 System.out.println("Received object is not of type Message");
             }
