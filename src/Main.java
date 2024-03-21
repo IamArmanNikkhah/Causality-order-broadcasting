@@ -48,7 +48,7 @@ public class Main {
             messageCount++;
 
             try {
-                Thread.sleep(1); // 1 milliseconds wait
+                Thread.sleep(50); // 1 milliseconds wait
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
