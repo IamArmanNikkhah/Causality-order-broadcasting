@@ -28,21 +28,6 @@ public class Main {
     public void launch() {
 
         waitForTrigger(1234);
-
-        //process.startReceivingMessages();
-        //Scanner scanner = new Scanner(System.in);
-        //System.out.println("Do you wish to start sending messages? (yes/no)");
-        //String userResponse = scanner.nextLine().trim().toLowerCase();
-
-        //if (userResponse.equals("yes")) {
-        //    // Logic to start sending messages
-        //    startSendingMessages();
-
-        //} else {
-        //    System.out.println("Process " + processID + " will not send messages.");
-        //}
-
-        // Terminate the process or clean up resources here if necessary
     }
 
     private void startSendingMessages() {
