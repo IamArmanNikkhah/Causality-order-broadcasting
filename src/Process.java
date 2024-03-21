@@ -295,9 +295,8 @@ public class Process {
                 
                 Message typedMessage = (Message) message;
 
-                UpdateClock(typedMessage);
-
                 if (isDeliverable(typedMessage)) {
+                    UpdateClock(typedMessage);
                     deliverMessage(typedMessage);
                     checkAndDeliverBufferedMessages();
                 } else {
